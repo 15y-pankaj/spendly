@@ -20,7 +20,7 @@
         </p>
         <div class="hero-actions">
             <a href="{{ url_for('register') }}" class="btn-primary">Create free account</a>
-            <a href="#how-it-works" class="btn-secondary">See how it works</a>
+            <button type="button" class="btn-secondary" id="openModalBtn">See how it works</button>
         </div>
     </div>
     <div class="hero-visual">
@@ -99,4 +99,53 @@
     </div>
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<div class="modal-overlay" id="videoModal">
+    <div class="modal-container">
+        <button class="modal-close" id="closeModalBtn">&times;</button>
+        <div class="modal-video-wrapper">
+            <iframe id="modalVideo" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const modal = document.getElementById('videoModal');
+    const openBtn = document.getElementById('openModalBtn');
+    const closeBtn = document.getElementById('closeModalBtn');
+    const video = document.getElementById('modalVideo');
+
+    // YouTube video ID (placeholder - replace with your own)
+    const videoId = 'dQw4w9WgXcQ';
+
+    openBtn.addEventListener('click', function() {
+        modal.classList.add('modal-open');
+        video.src = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0';
+        document.body.style.overflow = 'hidden';
+    });
+
+    function closeModal() {
+        modal.classList.remove('modal-open');
+        video.src = '';
+        document.body.style.overflow = '';
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('modal-open')) {
+            closeModal();
+        }
+    });
+})();
+</script>
 {% endblock %}
