@@ -1,8 +1,51 @@
 import sqlite3
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 DATABASE = "spendly.db"
+
+
+def create_user(name, email, password):
+    """
+    Create a new user with the given name, email, and password.
+    Hashes the password before storing.
+    Returns the new user's id.
+    Raises sqlite3.IntegrityError if email already exists.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    password_hash = generate_password_hash(password)
+
+    cursor.execute(
+        "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+        (name, email, password_hash)
+    )
+
+    user_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+    return user_id
+
+
+def get_user_by_email(email):
+    """
+    Fetch a user by email address.
+    Returns the user row as a dict-like object, or None if not found.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT * FROM users WHERE email = ?",
+        (email,)
+    )
+
+    user = cursor.fetchone()
+    conn.close()
+
+    return user
 
 
 def get_db():
