@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Profile — Spendly{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+
+    <!-- Top Profile Card -->
+    <div class="profile-header-card">
+        <div class="profile-avatar">{{ user.initials }}</div>
+        <div class="profile-details">
+            <h1 class="profile-name">{{ user.name }}</h1>
+            <p class="profile-email">{{ user.email }}</p>
+            <p class="profile-member">Member since {{ user.member_since }}</p>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <span class="stat-label">TOTAL SPENT</span>
+            <span class="stat-value">₹{{ "%.2f"|format(stats.total_spent) }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">TRANSACTIONS</span>
+            <span class="stat-value">{{ stats.transaction_count }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">TOP CATEGORY</span>
+            <span class="stat-value">{{ stats.top_category }}</span>
+        </div>
+    </div>
+
+    <!-- Bottom Section: Transactions + Categories -->
+    <div class="profile-bottom">
+        <!-- Recent Transactions -->
+        <div class="transactions-card">
+            <h2 class="card-title">Recent Transactions</h2>
+            <table class="transactions-table">
+                <thead>
+                    <tr>
+                        <th>DATE</th>
+                        <th>DESCRIPTION</th>
+                        <th>CATEGORY</th>
+                        <th class="amount-header">AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr>
+                        <td class="date-cell">{{ tx.date }}</td>
+                        <td class="desc-cell">{{ tx.description }}</td>
+                        <td class="category-cell"><span class="badge badge-{{ tx.category|lower }}">{{ tx.category }}</span></td>
+                        <td class="amount-cell">₹{{ "%.2f"|format(tx.amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- By Category -->
+        <div class="categories-card">
+            <h2 class="card-title">By Category</h2>
+            <div class="categories-list">
+                {% for cat in categories %}
+                <div class="category-item">
+                    <div class="category-header">
+                        <span class="category-name">{{ cat.name }}</span>
+                        <span class="category-amount">₹{{ "%.2f"|format(cat.amount) }}</span>
+                    </div>
+                    <div class="category-bar-bg">
+                        <div class="category-bar category-bar-{{ cat.class }}" style="width: {{ cat.pct }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

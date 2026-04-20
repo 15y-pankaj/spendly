@@ -81,7 +81,7 @@ def login():
 
         session["user_id"] = user["id"]
         flash("Welcome back!", "success")
-        return redirect(url_for("landing"))
+        return redirect(url_for("profile"))
 
     return render_template("login.html")
 
@@ -109,7 +109,46 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    # Auth guard
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    # Hardcoded user data (Step 4 - DB queries in Step 5)
+    user = {
+        "name": "Demo User",
+        "email": "demo@spendly.com",
+        "member_since": "April 2026",
+        "initials": "DU"
+    }
+
+    # Hardcoded summary stats
+    stats = {
+        "total_spent": 345.49,
+        "transaction_count": 8,
+        "top_category": "Food"
+    }
+
+    # Hardcoded transactions
+    transactions = [
+        {"date": "2026-04-08", "description": "Dinner with friends", "category": "Food", "amount": 65.00},
+        {"date": "2026-04-06", "description": "New shirt", "category": "Shopping", "amount": 89.99},
+        {"date": "2026-04-05", "description": "Movie tickets", "category": "Entertainment", "amount": 50.00},
+        {"date": "2026-04-03", "description": "Electric bill", "category": "Bills", "amount": 120.00},
+        {"date": "2026-04-02", "description": "Bus pass", "category": "Transport", "amount": 25.00},
+    ]
+
+    # Hardcoded category breakdown
+    categories = [
+        {"name": "Shopping", "amount": 89.99, "pct": 26, "class": "shopping"},
+        {"name": "Food", "amount": 110.50, "pct": 32, "class": "food"},
+        {"name": "Bills", "amount": 120.00, "pct": 35, "class": "bills"},
+        {"name": "Transport", "amount": 25.00, "pct": 7, "class": "transport"},
+        {"name": "Entertainment", "amount": 50.00, "pct": 14, "class": "entertainment"},
+    ]
+
+    return render_template("profile.html",
+                          user=user, stats=stats,
+                          transactions=transactions, categories=categories)
 
 
 @app.route("/expenses/add")
