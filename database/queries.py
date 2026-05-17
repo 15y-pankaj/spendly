@@ -75,7 +75,7 @@ def get_summary_stats(user_id):
     )
 
     result = cursor.fetchone()
-    total_spent = result['total_spent']
+    total_spent = float(result['total_spent'])
     transaction_count = result['transaction_count']
 
     # Get top category
@@ -156,7 +156,6 @@ def get_category_breakdown(user_id):
               - name (str): Category name
               - amount (float): Total spent in category
               - pct (int): Percentage of total spending (0-100)
-              - class (str): CSS class for styling
     """
     conn = get_db()
     cursor = conn.cursor()
@@ -193,23 +192,10 @@ def get_category_breakdown(user_id):
         # Calculate percentage and round to nearest integer
         pct = round((amount / total_spent) * 100)
 
-        # Map category to CSS class
-        class_mapping = {
-            'food': 'food',
-            'shopping': 'shopping',
-            'entertainment': 'entertainment',
-            'bills': 'bills',
-            'transport': 'transport',
-            'health': 'health',
-            'other': 'other'
-        }
-        css_class = class_mapping.get(category_name.lower(), 'other')
-
         categories.append({
             'name': category_name,
             'amount': amount,
-            'pct': pct,
-            'class': css_class
+            'pct': pct
         })
 
     # Sort by amount descending
