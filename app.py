@@ -2,6 +2,7 @@ import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash
 from database.db import get_db, init_db, seed_db, create_user, get_user_by_email
+from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-change-in-prod"
@@ -113,38 +114,24 @@ def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
-    # Hardcoded user data (Step 4 - DB queries in Step 5)
-    user = {
-        "name": "Demo User",
-        "email": "demo@spendly.com",
-        "member_since": "April 2026",
-        "initials": "DU"
-    }
+    # Get user ID from session
+    user_id = session["user_id"]
 
-    # Hardcoded summary stats
-    stats = {
-        "total_spent": 345.49,
-        "transaction_count": 8,
-        "top_category": "Food"
-    }
+    # Fetch real user data from database
+    user = get_user_by_id(user_id)
+    if user is None:
+        # User not found (shouldn't happen if session is valid)
+        session.clear()
+        return redirect(url_for("login"))
 
-    # Hardcoded transactions
-    transactions = [
-        {"date": "2026-04-08", "description": "Dinner with friends", "category": "Food", "amount": 65.00},
-        {"date": "2026-04-06", "description": "New shirt", "category": "Shopping", "amount": 89.99},
-        {"date": "2026-04-05", "description": "Movie tickets", "category": "Entertainment", "amount": 50.00},
-        {"date": "2026-04-03", "description": "Electric bill", "category": "Bills", "amount": 120.00},
-        {"date": "2026-04-02", "description": "Bus pass", "category": "Transport", "amount": 25.00},
-    ]
+    # Fetch real summary stats from database
+    stats = get_summary_stats(user_id)
 
-    # Hardcoded category breakdown
-    categories = [
-        {"name": "Shopping", "amount": 89.99, "pct": 26, "class": "shopping"},
-        {"name": "Food", "amount": 110.50, "pct": 32, "class": "food"},
-        {"name": "Bills", "amount": 120.00, "pct": 35, "class": "bills"},
-        {"name": "Transport", "amount": 25.00, "pct": 7, "class": "transport"},
-        {"name": "Entertainment", "amount": 50.00, "pct": 14, "class": "entertainment"},
-    ]
+    # Fetch real transactions from database
+    transactions = get_recent_transactions(user_id)
+
+    # Fetch real category breakdown from database
+    categories = get_category_breakdown(user_id)
 
     return render_template("profile.html",
                           user=user, stats=stats,
