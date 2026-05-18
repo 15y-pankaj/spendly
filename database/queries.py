@@ -156,6 +156,7 @@ def get_category_breakdown(user_id):
               - name (str): Category name
               - amount (float): Total spent in category
               - pct (int): Percentage of total spending (0-100)
+              - class (str): CSS class name for styling the category bar
     """
     conn = get_db()
     cursor = conn.cursor()
@@ -192,10 +193,17 @@ def get_category_breakdown(user_id):
         # Calculate percentage and round to nearest integer
         pct = round((amount / total_spent) * 100)
 
+        # Determine CSS class based on category name
+        category_class = category_name.lower().replace(' ', '-')
+        # Handle special cases or default to 'other' if not in predefined classes
+        if category_class not in ['food', 'bills', 'transport', 'shopping', 'entertainment', 'health']:
+            category_class = 'other'
+
         categories.append({
             'name': category_name,
             'amount': amount,
-            'pct': pct
+            'pct': pct,
+            'class': category_class
         })
 
     # Sort by amount descending
