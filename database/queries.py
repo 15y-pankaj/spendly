@@ -51,12 +51,14 @@ def get_user_by_id(user_id):
     }
 
 
-def get_summary_stats(user_id):
+def get_summary_stats(user_id, start_date=None, end_date=None):
     """
     Get summary statistics for a user's expenses.
 
     Args:
         user_id (int): The user's ID
+        start_date (str, optional): Start date in YYYY-MM-DD format
+        end_date (str, optional): End date in YYYY-MM-DD format
 
     Returns:
         dict: Statistics with keys:
@@ -67,11 +69,24 @@ def get_summary_stats(user_id):
     conn = get_db()
     cursor = conn.cursor()
 
+    # Build WHERE clause with optional date filtering
+    where_clauses = ["user_id = ?"]
+    params = [user_id]
+
+    if start_date:
+        where_clauses.append("date >= ?")
+        params.append(start_date)
+    if end_date:
+        where_clauses.append("date <= ?")
+        params.append(end_date)
+
+    where_sql = " AND ".join(where_clauses)
+
     # Get total spent and transaction count
     cursor.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total_spent, COUNT(*) as transaction_count "
-        "FROM expenses WHERE user_id = ?",
-        (user_id,)
+        f"SELECT COALESCE(SUM(amount), 0) as total_spent, COUNT(*) as transaction_count "
+        f"FROM expenses WHERE {where_sql}",
+        params
     )
 
     result = cursor.fetchone()
@@ -82,13 +97,13 @@ def get_summary_stats(user_id):
     top_category = "—"  # Default when no expenses
     if transaction_count > 0:
         cursor.execute(
-            """SELECT category, SUM(amount) as category_total
-               FROM expenses
-               WHERE user_id = ?
-               GROUP BY category
-               ORDER BY category_total DESC
-               LIMIT 1""",
-            (user_id,)
+            f"""SELECT category, SUM(amount) as category_total
+                FROM expenses
+                WHERE {where_sql}
+                GROUP BY category
+                ORDER BY category_total DESC
+                LIMIT 1""",
+            params
         )
         category_result = cursor.fetchone()
         if category_result:
@@ -103,13 +118,15 @@ def get_summary_stats(user_id):
     }
 
 
-def get_recent_transactions(user_id, limit=10):
+def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     """
     Get recent transactions for a user.
 
     Args:
         user_id (int): The user's ID
         limit (int): Maximum number of transactions to return
+        start_date (str, optional): Start date in YYYY-MM-DD format
+        end_date (str, optional): End date in YYYY-MM-DD format
 
     Returns:
         list: List of transaction dicts, each with keys:
@@ -122,13 +139,27 @@ def get_recent_transactions(user_id, limit=10):
     conn = get_db()
     cursor = conn.cursor()
 
+    # Build WHERE clause with optional date filtering
+    where_clauses = ["user_id = ?"]
+    params = [user_id]
+
+    if start_date:
+        where_clauses.append("date >= ?")
+        params.append(start_date)
+    if end_date:
+        where_clauses.append("date <= ?")
+        params.append(end_date)
+
+    where_sql = " AND ".join(where_clauses)
+    params.append(limit)  # Add limit as last parameter
+
     cursor.execute(
-        """SELECT date, description, category, amount
-           FROM expenses
-           WHERE user_id = ?
-           ORDER BY date DESC, created_at DESC
-           LIMIT ?""",
-        (user_id, limit)
+        f"""SELECT date, description, category, amount
+            FROM expenses
+            WHERE {where_sql}
+            ORDER BY date DESC, created_at DESC
+            LIMIT ?""",
+        params
     )
 
     transactions = []
@@ -144,26 +175,42 @@ def get_recent_transactions(user_id, limit=10):
     return transactions
 
 
-def get_category_breakdown(user_id):
+def get_category_breakdown(user_id, start_date=None, end_date=None):
     """
     Get spending breakdown by category for a user.
 
     Args:
         user_id (int): The user's ID
+        start_date (str, optional): Start date in YYYY-MM-DD format
+        end_date (str, optional): End date in YYYY-MM-DD format
 
     Returns:
         list: List of category dicts, each with keys:
               - name (str): Category name
               - amount (float): Total spent in category
               - pct (int): Percentage of total spending (0-100)
+              - class (str): CSS class name for styling the category bar
     """
     conn = get_db()
     cursor = conn.cursor()
 
+    # Build WHERE clause with optional date filtering
+    where_clauses = ["user_id = ?"]
+    params = [user_id]
+
+    if start_date:
+        where_clauses.append("date >= ?")
+        params.append(start_date)
+    if end_date:
+        where_clauses.append("date <= ?")
+        params.append(end_date)
+
+    where_sql = " AND ".join(where_clauses)
+
     # Get total spent for percentage calculation
     cursor.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id = ?",
-        (user_id,)
+        f"SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE {where_sql}",
+        params
     )
     total_result = cursor.fetchone()
     total_spent = total_result['total']
@@ -174,11 +221,11 @@ def get_category_breakdown(user_id):
 
     # Get spending by category
     cursor.execute(
-        """SELECT category, SUM(amount) as category_total
-           FROM expenses
-           WHERE user_id = ?
-           GROUP BY category""",
-        (user_id,)
+        f"""SELECT category, SUM(amount) as category_total
+            FROM expenses
+            WHERE {where_sql}
+            GROUP BY category""",
+        params
     )
 
     category_rows = cursor.fetchall()
@@ -192,10 +239,17 @@ def get_category_breakdown(user_id):
         # Calculate percentage and round to nearest integer
         pct = round((amount / total_spent) * 100)
 
+        # Determine CSS class based on category name
+        category_class = category_name.lower().replace(' ', '-')
+        # Handle special cases or default to 'other' if not in predefined classes
+        if category_class not in ['food', 'bills', 'transport', 'shopping', 'entertainment', 'health']:
+            category_class = 'other'
+
         categories.append({
             'name': category_name,
             'amount': amount,
-            'pct': pct
+            'pct': pct,
+            'class': category_class
         })
 
     # Sort by amount descending
