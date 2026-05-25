@@ -15,6 +15,26 @@
         </div>
     </div>
 
+    <!-- Date Filter Card -->
+    <div class="date-filter-card">
+        <form method="GET" action="{{ url_for('profile') }}" id="date-filter-form">
+            <div class="preset-buttons">
+                <a href="{{ url_for('profile') }}" class="preset-btn" data-preset="all-time">All Time</a>
+                <button type="button" class="preset-btn" data-preset="this-month">This Month</button>
+                <button type="button" class="preset-btn" data-preset="last-3-months">Last 3 Months</button>
+                <button type="button" class="preset-btn" data-preset="last-6-months">Last 6 Months</button>
+            </div>
+            <div class="date-inputs">
+                <label for="start_date">Start Date</label>
+                <input type="date" id="start_date" name="start_date" value="{{ start_date or '' }}">
+                <span class="date-separator">to</span>
+                <label for="end_date">End Date</label>
+                <input type="date" id="end_date" name="end_date" value="{{ end_date or '' }}">
+                <button type="submit" class="apply-btn">Apply</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Stats Row -->
     <div class="stats-row">
         <div class="stat-card">
@@ -78,4 +98,247 @@
     </div>
 
 </div>
+
+<style>
+    /* Date Filter Styles */
+    .date-filter-card {
+        background: var(--paper-card);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .preset-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .preset-btn {
+        background: var(--border-soft);
+        color: var(--ink-soft);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .preset-btn:hover:not(.active) {
+        background: var(--border);
+        color: var(--ink);
+    }
+
+    .preset-btn.active {
+        background: var(--accent);
+        color: var(--paper);
+    }
+
+    .date-inputs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .date-inputs label {
+        font-size: 0.875rem;
+        color: var(--ink-soft);
+        margin-bottom: 0.25rem;
+    }
+
+    .date-inputs input[type="date"] {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
+        width: 150px;
+    }
+
+    .date-separator {
+        font-size: 0.875rem;
+        color: var(--ink-soft);
+        margin: 0 0.25rem;
+    }
+
+    .apply-btn {
+        background: var(--accent);
+        color: var(--paper);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+        height: 38px;
+        display: flex;
+        align-items: center;
+    }
+
+    .apply-btn:hover {
+        background: var(--ink);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .date-filter-card {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .date-inputs {
+            width: 100%;
+        }
+
+        .date-inputs input[type="date"] {
+            width: 100%;
+        }
+    }
+</style>
+
+{% block scripts %}
+<script>
+// Date filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('date-filter-form');
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    const presetButtons = document.querySelectorAll('.preset-btn');
+    const applyButton = document.querySelector('.apply-btn');
+
+    // Format date as YYYY-MM-DD
+    function formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    // Get preset date ranges (excluding all-time since it's handled by link)
+    function getPresetDates(preset) {
+        const today = new Date();
+        let startDate, endDate;
+
+        switch (preset) {
+            case 'this-month':
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                endDate = today;
+                break;
+            case 'last-3-months':
+                startDate = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+                endDate = today;
+                break;
+            case 'last-6-months':
+                startDate = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+                endDate = today;
+                break;
+            default:
+                startDate = '';
+                endDate = '';
+        }
+
+        return {
+            start: startDate ? formatDate(startDate) : '',
+            end: formatDate(endDate)
+        };
+    }
+
+    // Check if current dates match a preset (excluding all-time)
+    function getMatchingPreset() {
+        const start = startDateInput.value;
+        const end = endDateInput.value;
+
+        // If both empty, it's All Time
+        if (!start && !end) return 'all-time';
+
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        // Check This Month
+        if (start === formatDate(firstDayOfMonth) && end === formatDate(today)) {
+            return 'this-month';
+        }
+
+        // Check Last 3 Months
+        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        if (start === formatDate(threeMonthsAgo) && end === formatDate(today)) {
+            return 'last-3-months';
+        }
+
+        // Check Last 6 Months
+        const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+        if (start === formatDate(sixMonthsAgo) && end === formatDate(today)) {
+            return 'last-6-months';
+        }
+
+        return null; // No match
+    }
+
+    // Update active state of preset buttons
+    function updateActivePreset() {
+        const matchingPreset = getMatchingPreset();
+        presetButtons.forEach(button => {
+            // Skip the All Time link for active state calculation via JS
+            // since it's handled by the link itself
+            if (button.dataset.preset === 'all-time') {
+                // For All Time, check if both inputs are empty
+                if (!startDateInput.value && !endDateInput.value) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            } else {
+                const preset = button.dataset.preset;
+                if (preset === matchingPreset) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            }
+        });
+    }
+
+    // Handle preset button clicks (only for non-all-time buttons)
+    presetButtons.forEach(button => {
+        // Skip the All Time link since it's a regular anchor tag
+        if (button.dataset.preset === 'all-time') {
+            return;
+        }
+
+        button.addEventListener('click', function() {
+            const preset = this.dataset.preset;
+            const dates = getPresetDates(preset);
+
+            startDateInput.value = dates.start;
+            endDateInput.value = dates.end;
+
+            // Update active state
+            presetButtons.forEach(btn => {
+                if (btn === this) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Submit the form
+            form.submit();
+        });
+    });
+
+    // Update active state on page load
+    updateActivePreset();
+
+    // Update active state when date inputs change (to highlight matching preset)
+    [startDateInput, endDateInput].forEach(input => {
+        input.addEventListener('change', updateActivePreset);
+    });
+});
+</script>
+{% endblock %}
 {% endblock %}

@@ -117,6 +117,49 @@ def profile():
     # Get user ID from session
     user_id = session["user_id"]
 
+    # Get date filter parameters from query string
+    start_date = request.args.get('start_date', type=str)
+    end_date = request.args.get('end_date', type=str)
+
+    # Validate date format (YYYY-MM-DD) - invalid formats are ignored
+    def is_valid_date(date_str):
+        if not date_str or date_str == '':
+            return True  # Empty string means no filter
+        try:
+            # Try to parse as YYYY-MM-DD
+            parts = date_str.split('-')
+            if len(parts) != 3:
+                return False
+            year, month, day = parts
+            # Check that we have exactly 4 digits, 2 digits, 2 digits
+            if len(year) != 4 or len(month) != 2 or len(day) != 2:
+                return False
+            # Try to convert to integers
+            year_int = int(year)
+            month_int = int(month)
+            day_int = int(day)
+            # Basic range checking
+            if month_int < 1 or month_int > 12:
+                return False
+            if day_int < 1 or day_int > 31:
+                return False
+            # Additional check for days in month (simplified)
+            return True
+        except ValueError:
+            return False
+
+    # Convert invalid dates to None (no filter)
+    if not is_valid_date(start_date):
+        start_date = None
+    if not is_valid_date(end_date):
+        end_date = None
+
+    # If both dates are valid, check that start_date <= end_date
+    if start_date and end_date and start_date > end_date:
+        # Invalid range: ignore both dates (treat as no filter)
+        start_date = None
+        end_date = None
+
     # Fetch real user data from database
     user = get_user_by_id(user_id)
     if user is None:
@@ -124,18 +167,19 @@ def profile():
         session.clear()
         return redirect(url_for("login"))
 
-    # Fetch real summary stats from database
-    stats = get_summary_stats(user_id)
+    # Fetch real summary stats from database with date filtering
+    stats = get_summary_stats(user_id, start_date=start_date, end_date=end_date)
 
-    # Fetch real transactions from database
-    transactions = get_recent_transactions(user_id)
+    # Fetch real transactions from database with date filtering
+    transactions = get_recent_transactions(user_id, start_date=start_date, end_date=end_date)
 
-    # Fetch real category breakdown from database
-    categories = get_category_breakdown(user_id)
+    # Fetch real category breakdown from database with date filtering
+    categories = get_category_breakdown(user_id, start_date=start_date, end_date=end_date)
 
     return render_template("profile.html",
                           user=user, stats=stats,
-                          transactions=transactions, categories=categories)
+                          transactions=transactions, categories=categories,
+                          start_date=start_date, end_date=end_date)
 
 
 @app.route("/expenses/add")
