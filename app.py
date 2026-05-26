@@ -2,7 +2,7 @@ import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash
 from database.db import get_db, init_db, seed_db, create_user, get_user_by_email
-from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
+from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown, insert_expense
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-change-in-prod"
@@ -156,6 +156,7 @@ def profile():
 
     # If both dates are valid, check that start_date <= end_date
     if start_date and end_date and start_date > end_date:
+        flash("Start date must be before end date.", "error")
         # Invalid range: ignore both dates (treat as no filter)
         start_date = None
         end_date = None
@@ -182,9 +183,95 @@ def profile():
                           start_date=start_date, end_date=end_date)
 
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    # Auth guard
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    if request.method == "GET":
+        # Render the add expense form
+        return render_template("add_expense.html")
+
+    # POST request - process form submission
+    user_id = session["user_id"]
+
+    # Get form data
+    amount_str = request.form.get("amount", "").strip()
+    category = request.form.get("category", "").strip()
+    date_str = request.form.get("date", "").strip()
+    description = request.form.get("description", "").strip()
+
+    # Validation errors
+    errors = []
+
+    # Validate amount
+    if not amount_str:
+        errors.append("Amount is required.")
+    else:
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                errors.append("Amount must be greater than 0.")
+        except ValueError:
+            errors.append("Amount must be a valid number.")
+
+    # Validate category
+    valid_categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+    if not category:
+        errors.append("Category is required.")
+    elif category not in valid_categories:
+        errors.append("Please select a valid category.")
+
+    # Validate date
+    if not date_str:
+        errors.append("Date is required.")
+    else:
+        # Basic YYYY-MM-DD validation
+        try:
+            parts = date_str.split('-')
+            if len(parts) != 3:
+                raise ValueError
+            year, month, day = parts
+            if len(year) != 4 or len(month) != 2 or len(day) != 2:
+                raise ValueError
+            year_int = int(year)
+            month_int = int(month)
+            day_int = int(day)
+            if month_int < 1 or month_int > 12:
+                raise ValueError
+            if day_int < 1 or day_int > 31:
+                raise ValueError
+            # Additional check for days in month (simplified)
+            # This is basic validation - for production you might want more robust date validation
+        except ValueError:
+            errors.append("Date must be in YYYY-MM-DD format.")
+
+    # If there are validation errors, re-render the form with errors and pre-filled values
+    if errors:
+        for error in errors:
+            flash(error, "error")
+        return render_template("add_expense.html",
+                             amount=amount_str,
+                             category=category,
+                             date=date_str,
+                             description=description)
+
+    # All validation passed - insert the expense
+    try:
+        amount_float = float(amount_str)
+        # For description, store None if empty string
+        desc_value = description if description else None
+        insert_expense(user_id, amount_float, category, date_str, desc_value)
+        flash("Expense added successfully!", "success")
+        return redirect(url_for("profile"))
+    except Exception as e:
+        flash("An error occurred while saving the expense. Please try again.", "error")
+        return render_template("add_expense.html",
+                             amount=amount_str,
+                             category=category,
+                             date=date_str,
+                             description=description)
 
 
 @app.route("/expenses/<int:id>/edit")
@@ -195,6 +282,16 @@ def edit_expense(id):
 @app.route("/expenses/<int:id>/delete")
 def delete_expense(id):
     return "Delete expense — coming in Step 9"
+
+
+# Analytics route (coming soon)
+@app.route("/analytics")
+def analytics():
+    # Auth guard: only allow logged-in users
+    if not session.get("user_id"):
+        flash("Please log in to access analytics.", "info")
+        return redirect(url_for("login"))
+    return render_template("analytics.html")
 
 
 if __name__ == "__main__":

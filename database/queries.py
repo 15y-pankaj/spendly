@@ -267,3 +267,33 @@ def get_category_breakdown(user_id, start_date=None, end_date=None):
                 categories[0]['pct'] = 0
 
     return categories
+
+
+def insert_expense(user_id, amount, category, date, description):
+    """
+    Insert a new expense for the given user.
+
+    Args:
+        user_id (int): The user's ID
+        amount (float): Expense amount
+        category (str): Expense category (must be one of fixed categories)
+        date (str): Expense date in YYYY-MM-DD format
+        description (str, optional): Expense description (can be empty)
+
+    Returns:
+        int: The ID of the newly inserted expense
+    """
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        # Store None if description is empty string
+        desc_value = description if description else None
+        cursor.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, date, desc_value)
+        )
+        conn.commit()
+        expense_id = cursor.lastrowid
+        return expense_id
+    finally:
+        conn.close()

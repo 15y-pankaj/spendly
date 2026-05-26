@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/analytics.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="analytics-coming-soon-container">
+    <div class="analytics-card">
+        <div class="decorative-circle top-right"></div>
+        <div class="decorative-circle bottom-left"></div>
+
+        <div class="icon-box">
+            <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="lucide-clock">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+        </div>
+
+        <span class="coming-soon-badge">COMING SOON</span>
+
+        <h1 class="analytics-title">Advanced Analytics</h1>
+
+        <p class="analytics-description">
+            We're working on powerful insights and visualizations to help you understand your spending patterns better.
+        </p>
+
+        <div class="dots-container">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+
+        <p class="analytics-tagline">We're crafting something special</p>
+    </div>
+</div>
+{% endblock %}
