@@ -2,7 +2,7 @@ import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash
 from database.db import get_db, init_db, seed_db, create_user, get_user_by_email
-from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown, insert_expense
+from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown, insert_expense, get_expense_by_id, update_expense
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-change-in-prod"
@@ -274,9 +274,119 @@ def add_expense():
                              description=description)
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    # Auth guard
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+
+    if request.method == "GET":
+        # GET: show the edit form pre-filled with current expense data
+        expense = get_expense_by_id(id, user_id)
+        if expense is None:
+            # Expense not found or not owned by user
+            abort(404)
+
+        # Get categories for the dropdown (same as add_expense)
+        categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+
+        return render_template("edit_expense.html",
+                             expense=expense,
+                             categories=categories)
+
+    # POST request - process form submission
+    # Get form data
+    amount_str = request.form.get("amount", "").strip()
+    category = request.form.get("category", "").strip()
+    date_str = request.form.get("date", "").strip()
+    description = request.form.get("description", "").strip()
+
+    # Validation errors
+    errors = []
+
+    # Validate amount
+    if not amount_str:
+        errors.append("Amount is required.")
+    else:
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                errors.append("Amount must be greater than 0.")
+        except ValueError:
+            errors.append("Amount must be a valid number.")
+
+    # Validate category
+    valid_categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+    if not category:
+        errors.append("Category is required.")
+    elif category not in valid_categories:
+        errors.append("Please select a valid category.")
+
+    # Validate date
+    if not date_str:
+        errors.append("Date is required.")
+    else:
+        # Basic YYYY-MM-DD validation
+        try:
+            parts = date_str.split('-')
+            if len(parts) != 3:
+                raise ValueError
+            year, month, day = parts
+            if len(year) != 4 or len(month) != 2 or len(day) != 2:
+                raise ValueError
+            year_int = int(year)
+            month_int = int(month)
+            day_int = int(day)
+            if month_int < 1 or month_int > 12:
+                raise ValueError
+            if day_int < 1 or day_int > 31:
+                raise ValueError
+            # Additional check for days in month (simplified)
+        except ValueError:
+            errors.append("Date must be in YYYY-MM-DD format.")
+
+    # If there are validation errors, re-render the form with errors and pre-filled values
+    if errors:
+        for error in errors:
+            flash(error, "error")
+        # Get the expense again to pass to template (for pre-filled values in case we want to show original)
+        # But we'll use submitted values for the form as per spec
+        expense = get_expense_by_id(id, user_id)
+        if expense is None:
+            abort(404)
+        categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+        return render_template("edit_expense.html",
+                             expense=expense,
+                             categories=categories,
+                             amount=amount_str,
+                             category=category,
+                             date=date_str,
+                             description=description)
+
+    # All validation passed - update the expense
+    try:
+        amount_float = float(amount_str)
+        # For description, store None if empty string
+        desc_value = description if description else None
+        update_expense(id, user_id, amount_float, category, date_str, desc_value)
+        flash("Expense updated successfully!", "success")
+        return redirect(url_for("profile"))
+    except Exception as e:
+        flash("An error occurred while updating the expense. Please try again.", "error")
+        # Get the expense again to pass to template
+        expense = get_expense_by_id(id, user_id)
+        if expense is None:
+            abort(404)
+        categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+        return render_template("edit_expense.html",
+                             expense=expense,
+                             categories=categories,
+                             amount=amount_str,
+                             category=category,
+                             date=date_str,
+                             description=description)
 
 
 @app.route("/expenses/<int:id>/delete")

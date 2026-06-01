@@ -130,6 +130,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
 
     Returns:
         list: List of transaction dicts, each with keys:
+              - id (int)
               - date (str)
               - description (str)
               - category (str)
@@ -154,7 +155,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     params.append(limit)  # Add limit as last parameter
 
     cursor.execute(
-        f"""SELECT date, description, category, amount
+        f"""SELECT id, date, description, category, amount
             FROM expenses
             WHERE {where_sql}
             ORDER BY date DESC, created_at DESC
@@ -165,6 +166,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     transactions = []
     for row in cursor.fetchall():
         transactions.append({
+            'id': row['id'],
             'date': row['date'],
             'description': row['description'] or '',
             'category': row['category'],
@@ -295,5 +297,62 @@ def insert_expense(user_id, amount, category, date, description):
         conn.commit()
         expense_id = cursor.lastrowid
         return expense_id
+    finally:
+        conn.close()
+
+
+def get_expense_by_id(expense_id, user_id):
+    """
+    Fetch a single expense by ID, only if it belongs to the given user.
+
+    Args:
+        expense_id (int): The expense ID
+        user_id (int): The user's ID
+
+    Returns:
+        sqlite3.Row: Expense data with keys: id, user_id, amount, category, date, description
+                     Returns None if expense not found or does not belong to user
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id, user_id, amount, category, date, description FROM expenses WHERE id = ? AND user_id = ?",
+        (expense_id, user_id)
+    )
+
+    expense = cursor.fetchone()
+    conn.close()
+
+    return expense
+
+
+def update_expense(expense_id, user_id, amount, category, date, description):
+    """
+    Update an existing expense with ownership verification.
+
+    Args:
+        expense_id (int): The expense ID
+        user_id (int): The user's ID
+        amount (float): New expense amount
+        category (str): New expense category
+        date (str): New expense date in YYYY-MM-DD format
+        description (str, optional): New expense description
+
+    Returns:
+        None
+    """
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        # Store None if description is empty string
+        desc_value = description if description else None
+        cursor.execute(
+            """UPDATE expenses
+               SET amount = ?, category = ?, date = ?, description = ?
+               WHERE id = ? AND user_id = ?""",
+            (amount, category, date, desc_value, expense_id, user_id)
+        )
+        conn.commit()
     finally:
         conn.close()

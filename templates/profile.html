@@ -66,6 +66,7 @@
                         <th>DESCRIPTION</th>
                         <th>CATEGORY</th>
                         <th class="amount-header">AMOUNT</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -75,6 +76,7 @@
                         <td class="desc-cell">{{ tx.description }}</td>
                         <td class="category-cell"><span class="badge badge-{{ tx.category|lower }}">{{ tx.category }}</span></td>
                         <td class="amount-cell">₹{{ "%.2f"|format(tx.amount) }}</td>
+                        <td class="actions-cell"><a href="/expenses/{{ tx.id }}/edit" class="action-link">Edit</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
