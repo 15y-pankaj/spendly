@@ -1,11 +1,12 @@
+import os
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
 from werkzeug.security import check_password_hash
-from database.db import get_db, init_db, seed_db, create_user, get_user_by_email
+from database.db import get_db, init_db, seed_db, create_user, get_user_by_email, VALID_CATEGORIES, is_valid_date, validate_expense_form
 from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown, insert_expense, get_expense_by_id, update_expense, delete_expense as delete_expense_db
 
 app = Flask(__name__)
-app.secret_key = "dev-secret-key-change-in-prod"
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-prod')
 
 with app.app_context():
     init_db()
@@ -121,33 +122,6 @@ def profile():
     start_date = request.args.get('start_date', type=str)
     end_date = request.args.get('end_date', type=str)
 
-    # Validate date format (YYYY-MM-DD) - invalid formats are ignored
-    def is_valid_date(date_str):
-        if not date_str or date_str == '':
-            return True  # Empty string means no filter
-        try:
-            # Try to parse as YYYY-MM-DD
-            parts = date_str.split('-')
-            if len(parts) != 3:
-                return False
-            year, month, day = parts
-            # Check that we have exactly 4 digits, 2 digits, 2 digits
-            if len(year) != 4 or len(month) != 2 or len(day) != 2:
-                return False
-            # Try to convert to integers
-            year_int = int(year)
-            month_int = int(month)
-            day_int = int(day)
-            # Basic range checking
-            if month_int < 1 or month_int > 12:
-                return False
-            if day_int < 1 or day_int > 31:
-                return False
-            # Additional check for days in month (simplified)
-            return True
-        except ValueError:
-            return False
-
     # Convert invalid dates to None (no filter)
     if not is_valid_date(start_date):
         start_date = None
@@ -202,50 +176,8 @@ def add_expense():
     date_str = request.form.get("date", "").strip()
     description = request.form.get("description", "").strip()
 
-    # Validation errors
-    errors = []
-
-    # Validate amount
-    if not amount_str:
-        errors.append("Amount is required.")
-    else:
-        try:
-            amount = float(amount_str)
-            if amount <= 0:
-                errors.append("Amount must be greater than 0.")
-        except ValueError:
-            errors.append("Amount must be a valid number.")
-
-    # Validate category
-    valid_categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
-    if not category:
-        errors.append("Category is required.")
-    elif category not in valid_categories:
-        errors.append("Please select a valid category.")
-
-    # Validate date
-    if not date_str:
-        errors.append("Date is required.")
-    else:
-        # Basic YYYY-MM-DD validation
-        try:
-            parts = date_str.split('-')
-            if len(parts) != 3:
-                raise ValueError
-            year, month, day = parts
-            if len(year) != 4 or len(month) != 2 or len(day) != 2:
-                raise ValueError
-            year_int = int(year)
-            month_int = int(month)
-            day_int = int(day)
-            if month_int < 1 or month_int > 12:
-                raise ValueError
-            if day_int < 1 or day_int > 31:
-                raise ValueError
-            # Additional check for days in month (simplified)
-            # This is basic validation - for production you might want more robust date validation
-        except ValueError:
-            errors.append("Date must be in YYYY-MM-DD format.")
+    # Validate form data using utility function
+    errors = validate_expense_form(amount_str, category, date_str)
 
     # If there are validation errors, re-render the form with errors and pre-filled values
     if errors:
@@ -290,7 +222,7 @@ def edit_expense(id):
             abort(404)
 
         # Get categories for the dropdown (same as add_expense)
-        categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+        categories = VALID_CATEGORIES
 
         return render_template("edit_expense.html",
                              expense=expense,
@@ -303,49 +235,8 @@ def edit_expense(id):
     date_str = request.form.get("date", "").strip()
     description = request.form.get("description", "").strip()
 
-    # Validation errors
-    errors = []
-
-    # Validate amount
-    if not amount_str:
-        errors.append("Amount is required.")
-    else:
-        try:
-            amount = float(amount_str)
-            if amount <= 0:
-                errors.append("Amount must be greater than 0.")
-        except ValueError:
-            errors.append("Amount must be a valid number.")
-
-    # Validate category
-    valid_categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
-    if not category:
-        errors.append("Category is required.")
-    elif category not in valid_categories:
-        errors.append("Please select a valid category.")
-
-    # Validate date
-    if not date_str:
-        errors.append("Date is required.")
-    else:
-        # Basic YYYY-MM-DD validation
-        try:
-            parts = date_str.split('-')
-            if len(parts) != 3:
-                raise ValueError
-            year, month, day = parts
-            if len(year) != 4 or len(month) != 2 or len(day) != 2:
-                raise ValueError
-            year_int = int(year)
-            month_int = int(month)
-            day_int = int(day)
-            if month_int < 1 or month_int > 12:
-                raise ValueError
-            if day_int < 1 or day_int > 31:
-                raise ValueError
-            # Additional check for days in month (simplified)
-        except ValueError:
-            errors.append("Date must be in YYYY-MM-DD format.")
+    # Validate form data using utility function
+    errors = validate_expense_form(amount_str, category, date_str)
 
     # If there are validation errors, re-render the form with errors and pre-filled values
     if errors:
@@ -356,7 +247,7 @@ def edit_expense(id):
         expense = get_expense_by_id(id, user_id)
         if expense is None:
             abort(404)
-        categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+        categories = VALID_CATEGORIES
         return render_template("edit_expense.html",
                              expense=expense,
                              categories=categories,
@@ -379,7 +270,7 @@ def edit_expense(id):
         expense = get_expense_by_id(id, user_id)
         if expense is None:
             abort(404)
-        categories = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+        categories = VALID_CATEGORIES
         return render_template("edit_expense.html",
                              expense=expense,
                              categories=categories,
@@ -417,5 +308,6 @@ def analytics():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5008)
+    port = int(os.environ.get('PORT', 5008))
+    app.run(debug=True, port=port)
 
