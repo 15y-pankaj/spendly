@@ -74,6 +74,11 @@ A lightweight, secure personal expense tracker built with Flask and SQLite. Trac
    - Fill in the registration form
    - Log in and start tracking your expenses!
 
+## 🌐 Live Demo
+
+Your Spendly app is now live and accessible at:
+https://spendly-production-630a.up.railway.app
+
 ## 🧪 Running Tests
 
 To run the test suite:
