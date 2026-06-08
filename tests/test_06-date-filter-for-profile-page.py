@@ -248,9 +248,9 @@ class TestProfileDateFilter:
         # We'll simulate a form submission by clicking the button (which is a GET request with the form data).
         # We can do a GET request with the query parameters as we did before.
         # But we already tested the filtering behavior. We'll just do a quick check that the form submission redirects to the same page with params.
-        # We'll submit the form with start_date=2026-04-01 and end_date=2026-04-30 (which should show all expenses in our test set)
-        response = auth_client_with_expenses.get('/profile?start_date=2026-04-01&end_date=2026-04-30')
+        # We'll submit the form with start_date=2026-04-01 and end_date=2026-05-10 (which should show all expenses in our test set)
+        response = auth_client_with_expenses.get('/profile?start_date=2026-04-01&end_date=2026-05-10')
         assert response.status_code == 200
-        # All expenses should be visible because our test set is within April 2026
+        # All expenses should be visible because our test set spans April to May 2026
         assert b'Breakfast' in response.data
         assert b'Clothes' in response.data

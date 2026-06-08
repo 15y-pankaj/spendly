@@ -76,7 +76,7 @@
                         <td class="desc-cell">{{ tx.description }}</td>
                         <td class="category-cell"><span class="badge badge-{{ tx.category|lower }}">{{ tx.category }}</span></td>
                         <td class="amount-cell">₹{{ "%.2f"|format(tx.amount) }}</td>
-                        <td class="actions-cell"><a href="/expenses/{{ tx.id }}/edit" class="action-link">Edit</a></td>
+                        <td class="actions-cell"><div class="actions-group"><a href="{{ url_for('edit_expense', id=tx.id) }}" class="action-link">Edit</a><form method="POST" action="{{ url_for('delete_expense', id=tx.id) }}" style="display:inline" class="action-form" onsubmit="return confirm('Delete this expense?')"><button type="submit" class="btn btn-delete">Delete</button></form></div></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -343,6 +343,53 @@ document.addEventListener('DOMContentLoaded', function() {
     [startDateInput, endDateInput].forEach(input => {
         input.addEventListener('change', updateActivePreset);
     });
+
+    // Get today's date in YYYY-MM-DD format
+    function getTodayDate() {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+    }
+
+    // Set date input constraints to prevent invalid ranges
+    function applyDateConstraints() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+
+        // If end date is set, set max on start date
+        if (endDate) {
+            startDateInput.max = endDate;
+        } else {
+            startDateInput.max = '';
+        }
+
+        // If start date is set, set min on end date
+        if (startDate) {
+            endDateInput.min = startDate;
+        } else {
+            endDateInput.min = '';
+        }
+    }
+
+    // Prevent selection of future dates in both date inputs
+    function applyFutureDatePrevention() {
+        const today = getTodayDate();
+        startDateInput.max = today;
+        endDateInput.max = today;
+    }
+
+    // Apply all constraints when date inputs change
+    function applyAllConstraints() {
+        applyDateConstraints();
+        applyFutureDatePrevention();
+    }
+
+    // Apply constraints when date inputs change
+    [startDateInput, endDateInput].forEach(input => {
+        input.addEventListener('change', applyAllConstraints);
+    });
+
+    // Apply constraints on initial load in case there are pre-filled values
+    applyAllConstraints();
 });
 </script>
 {% endblock %}
