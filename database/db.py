@@ -4,6 +4,100 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 DATABASE = "spendly.db"
 
+# Valid expense categories
+VALID_CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+
+
+def is_valid_date(date_str):
+    """Validate date string in YYYY-MM-DD format.
+
+    Args:
+        date_str (str): Date string to validate
+
+    Returns:
+        bool: True if valid YYYY-MM-DD date or empty string, False otherwise
+    """
+    if not date_str or date_str == '':
+        return True  # Empty string means no filter
+    try:
+        # Try to parse as YYYY-MM-DD
+        parts = date_str.split('-')
+        if len(parts) != 3:
+            return False
+        year, month, day = parts
+        # Check that we have exactly 4 digits, 2 digits, 2 digits
+        if len(year) != 4 or len(month) != 2 or len(day) != 2:
+            return False
+        # Try to convert to integers
+        year_int = int(year)
+        month_int = int(month)
+        day_int = int(day)
+        # Basic range checking
+        if month_int < 1 or month_int > 12:
+            return False
+        if day_int < 1 or day_int > 31:
+            return False
+        # Additional check for days in month (simplified)
+        return True
+    except ValueError:
+        return False
+
+
+def validate_expense_form(amount_str, category, date_str):
+    """Validate expense form data and return list of error messages.
+
+    Args:
+        amount_str (str): Amount as string from form
+        category (str): Category as string from form
+        date_str (str): Date as string from form
+
+    Returns:
+        list: List of error messages (empty if no errors)
+    """
+    errors = []
+
+    # Validate amount
+    if not amount_str:
+        errors.append("Amount is required.")
+    else:
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                errors.append("Amount must be greater than 0.")
+        except ValueError:
+            errors.append("Amount must be a valid number.")
+
+    # Validate category
+    if not category:
+        errors.append("Category is required.")
+    elif category not in VALID_CATEGORIES:
+        errors.append("Please select a valid category.")
+
+    # Validate date
+    if not date_str:
+        errors.append("Date is required.")
+    else:
+        # Basic YYYY-MM-DD validation
+        try:
+            parts = date_str.split('-')
+            if len(parts) != 3:
+                raise ValueError
+            year, month, day = parts
+            if len(year) != 4 or len(month) != 2 or len(day) != 2:
+                raise ValueError
+            year_int = int(year)
+            month_int = int(month)
+            day_int = int(day)
+            if month_int < 1 or month_int > 12:
+                raise ValueError
+            if day_int < 1 or day_int > 31:
+                raise ValueError
+            # Additional check for days in month (simplified)
+        except ValueError:
+            errors.append("Date must be in YYYY-MM-DD format.")
+
+    return errors
+
 
 def create_user(name, email, password):
     """
